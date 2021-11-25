@@ -1,4 +1,4 @@
-
+/*
 #include <iostream>
 #include <fstream>
 #include <thread>
@@ -48,3 +48,4 @@ int main()
     file.close();
     cout << "Fin de l'ecriture du fichier de maniere parallele et synchronisee." << endl;
 }
+*/

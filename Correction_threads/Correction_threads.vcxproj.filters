@@ -30,6 +30,9 @@
     <ClCompile Include="Exercice_Semapores_1.cpp">
       <Filter>Fichiers sources</Filter>
     </ClCompile>
+    <ClCompile Include="Exercice_Semaphores_2_a.cpp">
+      <Filter>Fichiers sources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Semaphore.h">
