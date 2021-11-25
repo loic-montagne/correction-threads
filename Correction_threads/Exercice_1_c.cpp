@@ -6,7 +6,7 @@
 
 using namespace std;
 
-ofstream file("match.txt");
+ofstream file("c:\\tmp\\match.txt");
 bool a_turn = true;
 mutex m;
 
