@@ -141,6 +141,7 @@ void reader(int id)
     cout << "  [R" << id << "] La chaine est : " << buffer << endl;
     cout << "  [R" << id << "] J'ai fini de lire." << endl;
     cout << "  [R" << id << "] Je me termine." << endl;
+    readers_count--;
 }
 
 void writer(int id)
@@ -159,6 +160,8 @@ void writer(int id)
 
     cout << "  [W" << id << "] J'ai fini d'ecrire." << buffer << endl;
     cout << "  [W" << id << "] Je me termine." << endl;
+
+    writers_count--;
 }
 
 bool strtoi(char* value, int* result)
