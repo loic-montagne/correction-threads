@@ -1,13 +1,15 @@
-/*
+
 #include <iostream>
 #include <fstream>
 #include <thread>
 #include <mutex>
+#include <cstdarg>
 #ifdef _WIN32
 #include <Windows.h>
 #else
 #include <unistd.h>
 #endif
+#include "Semaphore.h"
 
 using namespace std;
 
@@ -31,6 +33,7 @@ using namespace std;
 void reader(int);
 void writer(int);
 bool strtoi(char*, int*);
+template <typename... T> void print(T...);
 #ifdef _WIN32
 void sleep(DWORD);
 void usleep(DWORD);
@@ -54,29 +57,36 @@ int writers_count = 0;
 // Nombre de lecteurs en cours d'exécution
 int readers_count = 0;
 
+// Sémaphore pour réserver l'accès au tableau partagé
+CSemaphore semBuffer(1);
+
+// Sémaphore pour réserver l'accès à la sortie standard
+// Géré dans print()
+CSemaphore semStdOut(1);
+
 
 // Fonctions
 // ----------------------------------------------------------------------------------------------------------------
 
 int main(int argc, char* argv[])
 {
-    cout << "[TP] Demarrage du programme, lecture des arguments recus en cous..." << endl;
-    cout << "[TP] Identification des threads :" << endl;
-    cout << "     [TP] => Thread principal" << endl;
-    cout << "     [RX] => Thread lecteur X" << endl;
-    cout << "     [WX] => Thread redacteur X" << endl;
-    cout << endl;
-    cout << "[TP] Lecture des arguments recus en cous..." << endl;
+    print("[TP] Demarrage du programme, lecture des arguments recus en cous...\n",
+          "[TP] Identification des threads :\n",
+          "     [TP] => Thread principal\n",
+          "     [RX] => Thread lecteur X\n",
+          "     [WX] => Thread redacteur X\n",
+          "\n",
+          "[TP] Lecture des arguments recus en cous...\n");
     int readers_max, writers_max;
-    if (argc != 3 || 
+    if (argc != 3 ||
         !strtoi(argv[1], &readers_max) ||
         !strtoi(argv[2], &writers_max)) {
-        cout << "[TP] Arguments non valides, le programme s'arrete !" << endl;
+        print("[TP] Arguments non valides, le programme s'arrete !\n");
         exit(EXIT_FAILURE);
     }
 
-    cout << "[TP] Arguments corrects, " << readers_max << " lecteur(s) et " << writers_max << " redacteur(s) vont etre crees." << endl;
-    cout << "[TP] Initialisation du programme en cours..." << endl;
+    print("[TP] Arguments corrects, ", readers_max, " lecteur(s) et ", writers_max, " redacteur(s) vont etre crees.\n",
+          "[TP] Initialisation du programme en cours...\n");
 
     // Initialisation du tableau partagé : tout à 0
     memset(buffer, 0, BUFFER_SIZE * sizeof(char));
@@ -89,10 +99,10 @@ int main(int argc, char* argv[])
     thread* t_threads = new thread[threads_count];
     int indice = 0;
 
-    cout << "[TP] Initialisation du programme terminee." << endl;
-    cout << "[TP] Creation des lecteurs et des redacteurs de maniere aleatoire..." << endl;
+    print("[TP] Initialisation du programme terminee.\n",
+          "[TP] Creation des lecteurs et des redacteurs de maniere aleatoire...\n");
 
-    while (readers_count < readers_max || 
+    while (readers_count < readers_max ||
            writers_count < writers_max)
     {
         // Génération d'un nombre aléatoire compris entre 0 et 1
@@ -104,7 +114,7 @@ int main(int argc, char* argv[])
             readers_count++;
             t_threads[indice] = thread(reader, readers_count);
             indice++;
-        } 
+        }
         // 1 rédacteur si le nombre obtenu aléatoirement est impair
         else if (writers_count < writers_max && !even)
         {
@@ -117,39 +127,49 @@ int main(int argc, char* argv[])
         usleep((rand() % 1901) + 100);
     }
 
-    cout << "[TP] Creation des lecteurs et des redacteurs terminee." << endl;
-    cout << "[TP] Attente de la fin d'execution de tous les lecteurs / redacteurs..." << endl;
+    print("[TP] Creation des lecteurs et des redacteurs terminee.\n",
+          "[TP] Attente de la fin d'execution de tous les lecteurs / redacteurs...\n");
 
     for (int i = 0; i < threads_count; i++)
         t_threads[i].join();
 
-    cout << "[TP] Tous les lecteurs / redacteurs ont fini leur traitement." << endl;
-    cout << "[TP] Liberation de la memoire..." << endl;
+    print("[TP] Tous les lecteurs / redacteurs ont fini leur traitement.\n",
+          "[TP] Liberation de la memoire...\n");
 
     delete[] t_threads;
 
-    cout << "[TP] Memoire liberee, le programme va s'arreter." << endl;
+    print("[TP] Memoire liberee, le programme va s'arreter.\n");
 
     return(EXIT_SUCCESS);
 }
 
 void reader(int id)
 {
-    cout << "  [R" << id << "] Je viens de demarrer." << endl;
-    cout << "  [R" << id << "] Je commence a lire..." << endl;
-    cout << "  [R" << id << "] La chaine est : " << buffer << endl;
-    cout << "  [R" << id << "] J'ai fini de lire." << endl;
-    cout << "  [R" << id << "] Je me termine." << endl;
+    print("  [R", id, "] Je viens de demarrer.\n",
+          "  [R", id, "] Je demande l'acces au buffer...\n");
+    semBuffer.wait();
+    print("  [R", id, "] Je commence a lire...\n",
+          "  [R", id, "] La chaine est : ", buffer, "\n",
+          "  [R", id, "] J'ai fini de lire, je libere l'acces au buffer.\n");
+    semBuffer.notify();
+    print("  [R", id, "] Je me termine.\n");
 }
 
 void writer(int id)
 {
-    cout << "  [W" << id << "] Je viens de demarrer." << endl;
+    print("  [W", id, "] Je viens de demarrer.\n");
+
+    // rand n'est pas prévu pour être utilisé avec des threads, 
+    // pour obtenir un comportement "correct", 
+    // il faut réinitialiser la graine dans chaque thread...
+    srand(time(NULL));
 
     int indice = rand() % STRINGS_COUNT;
-    cout << "  [W" << id << "] Je vais ecrire la chaine \"" << writer_strings[indice] << "\" se trouvant a l'indice " << indice << "." << endl;
+    print("  [W", id, "] Je vais ecrire la chaine \"", writer_strings[indice], "\" se trouvant a l'indice ", indice, ".\n",
+          "  [W", id, "] Je demande l'acces au buffer...\n");
+    semBuffer.wait();
 
-    cout << "  [W" << id << "] Je commence a ecrire..." << endl;
+    print("  [W", id, "] Je commence a ecrire...\n");
     for (int i = 0; i < strlen(writer_strings[indice]); i++)
     {
         buffer[i] = writer_strings[indice][i];
@@ -157,8 +177,18 @@ void writer(int id)
     }
     buffer[strlen(writer_strings[indice])] = '\0';
 
-    cout << "  [W" << id << "] J'ai fini d'ecrire." << buffer << endl;
-    cout << "  [W" << id << "] Je me termine." << endl;
+    print("  [W", id, "] J'ai fini d'ecrire, je libere l'acces au buffer.", "\n");
+    semBuffer.notify();
+
+    print("  [W", id, "] Je me termine.\n");
+}
+
+template <typename... T> void print(T... args)
+{
+    semStdOut.wait();
+    ((cout << args), ...);
+    cout.flush();
+    semStdOut.notify();
 }
 
 bool strtoi(char* value, int* result)
@@ -188,4 +218,3 @@ void usleep(DWORD dwMilliseconds)
     Sleep(dwMilliseconds);
 }
 #endif
-*/
