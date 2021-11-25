@@ -146,6 +146,7 @@
     <ClCompile Include="Exercice_Semaphores_2_a.cpp" />
     <ClCompile Include="Exercice_Semaphores_1.cpp" />
     <ClCompile Include="Exercice_Semaphores_2_b.cpp" />
+    <ClCompile Include="Exercice_Semaphores_2_c.cpp" />
     <ClCompile Include="Semaphore.cpp" />
   </ItemGroup>
   <ItemGroup>

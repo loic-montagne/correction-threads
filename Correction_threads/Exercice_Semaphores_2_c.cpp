@@ -1,4 +1,4 @@
-/*
+
 #include <iostream>
 #include <fstream>
 #include <thread>
@@ -24,6 +24,9 @@ using namespace std;
 
 // Nombre de secondes que met un rédacteur pour écrire dans le tableau partagé
 #define WRITING_TIME 1
+
+// Nombre de secondes que met un lecteur pour lire dans le tableau partagé
+#define READING_TIME 2
 
 
 // Prototypes des fonctions disponibles dans le programme
@@ -57,8 +60,14 @@ int writers_count = 0;
 // Nombre de lecteurs en cours d'exécution
 int readers_count = 0;
 
+// Nombre de lecteurs actifs (en cours d'accès)
+int active_readers_count = 0;
+
 // Sémaphore pour réserver l'accès au tableau partagé
 CSemaphore sem_buffer(1);
+
+// Sémaphore pour réserver l'accès à la variable active_readers_count
+CSemaphore sem_active_readers_count(1);
 
 // Sémaphore pour réserver l'accès à la sortie standard
 // Géré dans print()
@@ -103,20 +112,20 @@ int main(int argc, char* argv[])
           "[TP] Creation des lecteurs et des redacteurs de maniere aleatoire...\n");
 
     while (readers_count < readers_max ||
-           writers_count < writers_max)
+        writers_count < writers_max)
     {
-        // Génération d'un nombre aléatoire compris entre 0 et 1
-        bool even = rand() % 2;
+        // Génération d'un nombre aléatoire compris entre 0 et 2
+        int value = rand() % 3;
 
-        // 1 lecteur si le nombre obtenu aléatoirement est pair
-        if (readers_count < readers_max && even)
+        // 1 lecteur si le nombre obtenu aléatoirement != 2 (on privilégie les lecteurs)
+        if (readers_count < readers_max && value != 2)
         {
             readers_count++;
             t_threads[indice] = thread(reader, readers_count);
             indice++;
         }
-        // 1 rédacteur si le nombre obtenu aléatoirement est impair
-        else if (writers_count < writers_max && !even)
+        // 1 rédacteur si le nombre obtenu aléatoirement == 2
+        else if (writers_count < writers_max && value == 2)
         {
             writers_count++;
             t_threads[indice] = thread(writer, writers_count);
@@ -147,11 +156,39 @@ void reader(int id)
 {
     print("  [R", id, "] Je viens de demarrer.\n",
           "  [R", id, "] Je demande l'acces au buffer...\n");
-    sem_buffer.wait();
+    
+    // Il y a 2 cas : 
+    //   - Soit des lecteurs sont en cours d'accès au buffer,
+    //     dans ce cas active_readers_count > 0 et on peut accéder au buffer sans vérifier
+    //   - Soit aucun lecteur n'est en cours d'accès au buffer,
+    //     dans ce cas active_readers_count == 0 et on vérifie que le buffer est disponible
+    // sem_active_readers_count sert à éviter que 2 lecteurs changent active_readers_count en même temps
+    sem_active_readers_count.wait();
+    if (active_readers_count == 0)
+        sem_buffer.wait();
+    active_readers_count++;
+    sem_active_readers_count.notify();
+
     print("  [R", id, "] Je commence a lire...\n",
-          "  [R", id, "] La chaine est : ", buffer, "\n",
-          "  [R", id, "] J'ai fini de lire, je libere l'acces au buffer.\n");
-    sem_buffer.notify();
+          "  [R", id, "] La chaine est : ", buffer, "\n");
+    
+    // Attente de quelques secondes pour voir que plusieurs lecteurs accèdent en même temps au buffer
+    sleep(READING_TIME);
+
+    print("  [R", id, "] J'ai fini de lire, je libere l'acces au buffer.\n");
+
+    // Il y a 2 cas : 
+    //   - Soit il reste des lecteurs en cours d'accès au buffer,
+    //     dans ce cas active_readers_count > 0 et on a rien à faire de plus
+    //   - Soit il ne reste plus de lecteur en cours d'accès au buffer (jétais le dernier),
+    //     dans ce cas active_readers_count == 0 et je libère l'accès au buffer
+    // sem_active_readers_count sert à éviter que 2 lecteurs changent active_readers_count en même temps
+    sem_active_readers_count.wait();
+    active_readers_count--;
+    if (active_readers_count == 0)
+        sem_buffer.notify();
+    sem_active_readers_count.notify();
+
     print("  [R", id, "] Je me termine.\n");
 }
 
@@ -218,4 +255,3 @@ void usleep(DWORD dwMilliseconds)
     Sleep(dwMilliseconds);
 }
 #endif
-*/
