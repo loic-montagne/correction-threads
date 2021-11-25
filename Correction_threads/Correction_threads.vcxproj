@@ -139,9 +139,14 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Exercice_1_a.cpp" />
-    <ClCompile Include="Exercice_1_b.cpp" />
-    <ClCompile Include="Exercice_1_c.cpp" />
+    <ClCompile Include="Exercice_Mutex_a.cpp" />
+    <ClCompile Include="Exercice_Mutex_b.cpp" />
+    <ClCompile Include="Exercice_Mutex_c.cpp" />
+    <ClCompile Include="Exercice_Semapores_1.cpp" />
+    <ClCompile Include="Semaphore.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Semaphore.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
